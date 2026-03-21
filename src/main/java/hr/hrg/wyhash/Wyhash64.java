@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-GPL-3.0-with-Commons-Clause
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Davor Hrg
 package hr.hrg.wyhash;
 

@@ -23,26 +23,26 @@
     </dependencies>
     
     <name>Wyhash Java</name>
-    <url>https://github.com/dhrg/wyhash</url>
+    <url>https://github.com/hrgdavor/wyhash</url>
 
     <licenses>
         <license>
-            <name>GPL-3.0-with-Commons-Clause</name>
-            <url>https://spdx.org/licenses/GPL-3.0-or-later.html</url>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
         </license>
     </licenses>
 
     <developers>
         <developer>
             <name>Davor Hrg</name>
-            <url>https://github.com/dhrg</url>
+            <url>https://github.com/hrgdavor</url>
         </developer>
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/dhrg/wyhash.git</connection>
-        <developerConnection>scm:git:ssh://github.com:dhrg/wyhash.git</developerConnection>
-        <url>http://github.com/dhrg/wyhash/tree/master</url>
+        <connection>scm:git:git://github.com/hrgdavor/wyhash.git</connection>
+        <developerConnection>scm:git:ssh://github.com:hrgdavor/wyhash.git</developerConnection>
+        <url>http://github.com/hrgdavor/wyhash/tree/master</url>
     </scm>
 
     <distributionManagement>
