@@ -164,6 +164,7 @@ public final class Wyhash64 {
         private final long[] state = new long[3];
         private long totalLen;
         private final byte[] buf = new byte[48];
+        private final byte[] scratch = new byte[16];
         private int bufLen;
 
         public Streaming(long seed) {
@@ -238,10 +239,8 @@ public final class Wyhash64 {
                     _b = 0;
                 }
             } else {
-                byte[] scratch = null;
                 if (inputLen < 16) {
                     int rem = 16 - inputLen;
-                    scratch = new byte[16];
                     System.arraycopy(buf, 48 - rem, scratch, 0, rem);
                     System.arraycopy(buf, 0, scratch, rem, inputLen);
                     input = scratch;
