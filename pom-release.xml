@@ -24,7 +24,7 @@
         Never test this POM by running deploy without a skip: pass -DskipPublishing=true (the publisher's own
         parameter, default false), which still proves the release path reaches the publisher without uploading.
 
-        This release must be published before `hr.hrg:fs-meta`, which depends on `hr.hrg:wyhash:1.1.0`.
+        This release must be published before `hr.hrg:fs-meta`, which depends on `hr.hrg:wyhash:1.2.0`.
         See publishing.md.
     -->
 

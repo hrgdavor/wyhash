@@ -92,10 +92,10 @@ Two choices in that file are deliberate:
 | JS     | `js/wyhash64.mjs`              | **done** — a from-scratch implementation in BigInt arithmetic, asserted against the vectors *and* the library golden vectors |
 | Java   | `src/main/java/hr/hrg/wyhash/` | **done** — grown out of this project's `1.0.0` (see `doc/adr/005-wyhash64-deterministic-hashing.md`), with its zero-allocation `String` paths, `char[]`/`CharSequence` handling, streaming form and **144 tests**. A `MemorySegment` path is the newest addition, for callers that already hold bytes off-heap |
 
-The Java port publishes the coordinates its consumers already resolve — `hr.hrg:wyhash` — at `1.1.0`,
+The Java port publishes the coordinates its consumers already resolve — `hr.hrg:wyhash` — at `1.2.0`,
 which supersedes the published `1.0.0`: the same algorithm, the same values (every one of them in the vector
 file), one implementation to maintain. The JavaScript port is published separately as `@hrg/wyhash`. A consumer
-that pinned `1.0.0` gets the same values from `1.1.0` and a larger API; a consumer that vendored a copy, or wrote
+that pinned `1.0.0` gets the same values from `1.2.0` and a larger API; a consumer that vendored a copy, or wrote
 its own, can retire it against the vectors this project generates — the retirement itself is that project's change,
 not this one's.
 

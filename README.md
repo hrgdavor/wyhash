@@ -52,7 +52,7 @@ separate claims, because they fail for different reasons:
 <dependency>
     <groupId>hr.hrg</groupId>
     <artifactId>wyhash</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
@@ -448,16 +448,16 @@ If you are looking for further improvements, check the successor <https://github
 ## Publishing
 
 Maven releases go through [`pom-release.xml`](pom-release.xml), never a bare `mvn deploy`; [publishing.md](publishing.md)
-has the prerequisites (JDK 22+ , real Maven 3.9.9, the `central` token and GPG), the commands and the two-POM guard.
+has the prerequisites (JDK 22+, real Maven 3.9.9, the `central` token and GPG), the commands and the two-POM guard.
 The same file covers the npm package (`@hrg/wyhash`) and the Zig source.
 
-The Java artifact is published as `hr.hrg:wyhash:1.1.0`, with sources and javadoc jars attached. **Publish this
-release before `hr.hrg:fs-meta`**, which pins it.
+`hr.hrg:wyhash:1.2.0` is on Maven Central and `@hrg/wyhash@1.2.0` is on npm. fs-meta pins the Java artifact and
+imports the scoped npm package; fs-meta 0.3.7 is the published release that consumes it.
 
 ## License
 
 MIT — see [`LICENSE.txt`](LICENSE.txt). That covers everything in this repository: `1.0.0`'s Java
-implementation, the implementation that grew out of it (`1.1.0`), the JavaScript and Zig ports, the generator and
+implementation, the implementation that grew out of it (`1.2.0`), the JavaScript and Zig ports, the generator and
 the generated vectors. The Java port arrived from the dia-log project on 2026-10-16 together with its design
 document and ADR; it is MIT here like the rest, and `doc/adr/005-wyhash64-deterministic-hashing.md` plus
 [`doc/zero-allocation.md`](doc/zero-allocation.md) keep the attribution and the decision history. Every source file
