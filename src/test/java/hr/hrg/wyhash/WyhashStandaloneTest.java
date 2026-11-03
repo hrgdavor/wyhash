@@ -1,9 +1,7 @@
-// SPDX-License-Identifier: MIT
-// Copyright (c) 2026 Davor Hrg
 package hr.hrg.wyhash;
 
-import org.junit.Test;
-import static org.junit.Assert.assertEquals;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class WyhashStandaloneTest {
 
@@ -42,9 +40,5 @@ public class WyhashStandaloneTest {
         assertTrue(h3 != h4);
         assertTrue(h4 != h5);
         assertTrue(h17 != h5);
-    }
-
-    private void assertTrue(boolean condition) {
-        org.junit.Assert.assertTrue(condition);
     }
 }

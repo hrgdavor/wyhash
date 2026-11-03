@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        RELEASE ENTRY POINT - not the normal build.
+
+        This is a copy of pom.xml, not a child of it: pom.xml packages a jar, and Maven 3.9.9 refuses a
+        jar-packaged POM as a parent ("Invalid packaging for parent POM ... must be 'pom' but is 'jar'").
+        Maven also has no POM include, so the POM is duplicated. The intended differences are this comment
+        block and the Central publisher plugin in the top-level <build> below, which pom.xml deliberately does
+        not carry. maven.deploy.skip stays true here too: it disables maven-deploy-plugin, not the publisher
+        (a separate goal at the same phase), so if the publisher extension ever failed to load, a release
+        would do nothing rather than fall back to a direct deploy. scripts/check-poms.mjs strips comments,
+        removes the publisher plugin from this file, and fails if the two POMs are not otherwise identical -
+        so a change to pom.xml must be copied here in the same commit.
+
+        Release (real Maven, not mvnd), with JDK 22+ and the Central token in ~/.m2/settings.xml:
+
+            <maven-home>\bin\mvn.cmd -f pom-release.xml -Ppublish -Dgpg.skip=false -DskipTests deploy
+
+        Never test this POM by running deploy without a skip: pass -DskipPublishing=true (the publisher's own
+        parameter, default false), which still proves the release path reaches the publisher without uploading.
+
+        This release must be published before `hr.hrg:fs-meta`, which depends on `hr.hrg:wyhash:1.1.0`.
+        See publishing.md.
+    -->
+
+    <!--
+        1.1.0 is the merge, not a rewrite. 1.0.0 shipped a 241-line class with the byte[], ByteBuffer and char[]
+        paths and a `Streaming` form; the implementation has since grown the zero-allocation `String` paths, the
+        `char[]`/`CharSequence` handling that packs chars itself, a `MemorySegment` input, and the conformance
+        material that makes the other ports checkable (generated vectors, and JavaScript, Zig and Java ports that
+        assert them). Same algorithm, same values — every value is pinned by `conformance/wyhash-vectors.json`,
+        generated from the reference rather than from any port.
+
+        JAVA 22, NOT 18. The `MemorySegment` input cannot exist earlier: `java.lang.foreign` is final in 22, and
+        the memory-mapping test uses the FFM `FileChannel.map(mode, offset, size, arena)` overload. 1.0.0's
+        floor was 18 (for `Math.unsignedMultiplyHigh`), so a consumer that pinned 18 must move to 22 — the honest
+        cost of the added input rather than something to paper over. The zero-allocation `String` path
+        additionally wants `java.base/java.lang` opened to the unnamed module (`add-opens`) at run time, and falls back to
+        `toCharArray()` without it (doc/zero-allocation.md § 2, README.md).
+
+        RELEASE GUARD. This POM has the Central publisher below and sets maven.deploy.skip=true, so
+        maven-deploy-plugin is skipped while the publisher (a separate goal at the same phase) runs; if the
+        extension ever failed to load, a release would do nothing instead of uploading directly.
+    -->
+
+    <groupId>hr.hrg</groupId>
+    <artifactId>wyhash</artifactId>
+    <version>1.2.0</version>
+    <packaging>jar</packaging>
+
+    <name>Wyhash Java</name>
+    <description>
+        Standalone implementation of Wyhash, compatible with the Zig standard library variant
+        (std.hash.Wyhash): byte arrays and slices, ByteBuffer, MemorySegment (memory-mapped files, arenas and
+        off-heap buffers), zero-allocation String paths, char[] and CharSequence, one-shot or streaming.
+        Intended for file change tracking and general-purpose non-cryptographic hashing.
+    </description>
+    <url>https://github.com/hrgdavor/wyhash</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>hrgdavor</id>
+            <name>Davor Hrg</name>
+            <url>https://github.com/hrgdavor</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/hrgdavor/wyhash.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/hrgdavor/wyhash.git</developerConnection>
+        <url>https://github.com/hrgdavor/wyhash</url>
+    </scm>
+
+    <properties>
+        <maven.compiler.release>22</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <junit.version>5.10.2</junit.version>
+
+        <maven.compiler.plugin.version>3.11.0</maven.compiler.plugin.version>
+        <maven.surefire.plugin.version>3.2.5</maven.surefire.plugin.version>
+        <maven.jar.plugin.version>3.3.0</maven.jar.plugin.version>
+        <maven.install.plugin.version>3.1.4</maven.install.plugin.version>
+        <maven.deploy.plugin.version>3.1.2</maven.deploy.plugin.version>
+        <maven.source.plugin.version>3.3.1</maven.source.plugin.version>
+        <maven.javadoc.plugin.version>3.11.2</maven.javadoc.plugin.version>
+        <maven.gpg.plugin.version>3.2.7</maven.gpg.plugin.version>
+        <central.publishing.plugin.version>0.6.0</central.publishing.plugin.version>
+
+        <!-- Signing is off by default so local builds never wait on a passphrase; a release passes -Dgpg.skip=false. -->
+        <gpg.skip>true</gpg.skip>
+        <!--
+            PUBLISHING GUARD, RELEASE HALF. pom.xml has no publisher and sets maven.deploy.skip=true, so a
+            normal build never loads the extension and a bare `mvn deploy` is a no-op. This release copy adds
+            the publisher below but keeps maven.deploy.skip=true: the skip disables maven-deploy-plugin, not
+            the Central publisher, which is a separate goal at the same phase. If the publisher extension
+            failed to load, the release would therefore do nothing instead of uploading directly.
+        -->
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
+    <dependencies>
+        <!-- Test-only: the library itself resolves nothing beyond the JDK. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.plugin.version}</version>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.plugin.version}</version>
+                <configuration>
+                    <!--
+                        The zero-allocation `String` path reads `String.value`/`coder` through a
+                        `privateLookupIn` VarHandle, which needs `java.lang` opened to the unnamed module. Without
+                        this the implementation falls back to `toCharArray()` — correct, but allocating — and
+                        WyhashZeroAllocTest would be asserting a path it never reached.
+                    -->
+                    <argLine>--add-opens java.base/java.lang=ALL-UNNAMED</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${maven.jar.plugin.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>${maven.install.plugin.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>${maven.deploy.plugin.version}</version>
+            </plugin>
+            <!--
+                The Central publisher. It is here, in the top-level <build> of the release POM, because Maven
+                reads <extensions> only from the build and never from a profile: declared in the publish
+                profile it was silently never loaded, and `deploy` staged a bundle without uploading it or
+                saying "central". It takes over deploy and suppresses maven-deploy-plugin, and it is a separate
+                goal at the same phase, so maven.deploy.skip=true above does not stop it - it stops the plugin
+                that would otherwise upload a non-bundle directly.
+                skipPublishing is left at the plugin's default (false). Pass -DskipPublishing=true to exercise
+                this path without uploading.
+            -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>${central.publishing.plugin.version}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+    <profiles>
+        <profile>
+            <id>publish</id>
+            <build>
+                <plugins>
+                    <!-- Central requires a sources jar and a javadoc jar next to the binary. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>${maven.source.plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>${maven.javadoc.plugin.version}</version>
+                        <configuration>
+                            <doclint>none</doclint>
+                            <additionalOptions>
+                                <additionalOption>--no-fonts</additionalOption>
+                            </additionalOptions>
+                            <source>${maven.compiler.release}</source>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Signing: skipped unless -Dgpg.skip=false. The passphrase comes from MAVEN_GPG_PASSPHRASE,
+                         so a headless build never waits on a prompt. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${maven.gpg.plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${gpg.skip}</skip>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>central</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+        </snapshotRepository>
+        <repository>
+            <id>central</id>
+            <url>https://central.sonatype.com/repository/maven-releases/</url>
+        </repository>
+    </distributionManagement>
+</project>

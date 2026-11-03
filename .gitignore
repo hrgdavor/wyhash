@@ -3,3 +3,13 @@ target
 .idea
 bin
 blog.md
+
+# The Zig build's output and caches, and the compiled classes `check-ports.mjs` uses for the Java leg. Both are
+# written inside the project so a check run leaves nothing outside the tree.
+zig-out/
+.zig-cache/
+.java-check/
+
+# The JavaScript port has no dependencies (`package.json` declares none), so this only matters if a checkout ever
+# installs one by accident.
+node_modules/

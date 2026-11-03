@@ -1,39 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        1.1.0 is the merge, not a rewrite. 1.0.0 shipped a 241-line class with the byte[], ByteBuffer and char[]
+        paths and a `Streaming` form; the implementation has since grown the zero-allocation `String` paths, the
+        `char[]`/`CharSequence` handling that packs chars itself, a `MemorySegment` input, and the conformance
+        material that makes the other ports checkable (generated vectors, and JavaScript, Zig and Java ports that
+        assert them). Same algorithm, same values — every value is pinned by `conformance/wyhash-vectors.json`,
+        generated from the reference rather than from any port.
+
+        JAVA 22, NOT 18. The `MemorySegment` input cannot exist earlier: `java.lang.foreign` is final in 22, and
+        the memory-mapping test uses the FFM `FileChannel.map(mode, offset, size, arena)` overload. 1.0.0's
+        floor was 18 (for `Math.unsignedMultiplyHigh`), so a consumer that pinned 18 must move to 22 — the honest
+        cost of the added input rather than something to paper over. The zero-allocation `String` path
+        additionally wants `java.base/java.lang` opened to the unnamed module (`add-opens`) at run time, and falls back to
+        `toCharArray()` without it (doc/zero-allocation.md § 2, README.md).
+
+        RELEASE GUARD. This POM has no Central publisher and sets maven.deploy.skip=true, so a normal build never
+        loads the publisher and a bare `mvn deploy` is a no-op. The publisher lives in pom-release.xml; see
+        publishing.md and scripts/check-poms.mjs.
+    -->
 
     <groupId>hr.hrg</groupId>
     <artifactId>wyhash</artifactId>
-    <version>1.0.0</version>
+    <version>1.2.0</version>
+    <packaging>jar</packaging>
 
-    <properties>
-        <maven.compiler.source>18</maven.compiler.source>
-        <maven.compiler.target>18</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-    <dependencies>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.2</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-    
     <name>Wyhash Java</name>
+    <description>
+        Standalone implementation of Wyhash, compatible with the Zig standard library variant
+        (std.hash.Wyhash): byte arrays and slices, ByteBuffer, MemorySegment (memory-mapped files, arenas and
+        off-heap buffers), zero-allocation String paths, char[] and CharSequence, one-shot or streaming.
+        Intended for file change tracking and general-purpose non-cryptographic hashing.
+    </description>
     <url>https://github.com/hrgdavor/wyhash</url>
 
     <licenses>
         <license>
             <name>MIT License</name>
             <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
         </license>
     </licenses>
 
     <developers>
         <developer>
+            <id>hrgdavor</id>
             <name>Davor Hrg</name>
             <url>https://github.com/hrgdavor</url>
         </developer>
@@ -41,90 +56,175 @@
 
     <scm>
         <connection>scm:git:git://github.com/hrgdavor/wyhash.git</connection>
-        <developerConnection>scm:git:ssh://github.com:hrgdavor/wyhash.git</developerConnection>
-        <url>http://github.com/hrgdavor/wyhash/tree/master</url>
+        <developerConnection>scm:git:ssh://git@github.com/hrgdavor/wyhash.git</developerConnection>
+        <url>https://github.com/hrgdavor/wyhash</url>
     </scm>
+
+    <properties>
+        <maven.compiler.release>22</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <junit.version>5.10.2</junit.version>
+
+        <maven.compiler.plugin.version>3.11.0</maven.compiler.plugin.version>
+        <maven.surefire.plugin.version>3.2.5</maven.surefire.plugin.version>
+        <maven.jar.plugin.version>3.3.0</maven.jar.plugin.version>
+        <maven.install.plugin.version>3.1.4</maven.install.plugin.version>
+        <maven.deploy.plugin.version>3.1.2</maven.deploy.plugin.version>
+        <maven.source.plugin.version>3.3.1</maven.source.plugin.version>
+        <maven.javadoc.plugin.version>3.11.2</maven.javadoc.plugin.version>
+        <maven.gpg.plugin.version>3.2.7</maven.gpg.plugin.version>
+        <central.publishing.plugin.version>0.6.0</central.publishing.plugin.version>
+
+        <!-- Signing is off by default so local builds never wait on a passphrase; a release passes -Dgpg.skip=false. -->
+        <gpg.skip>true</gpg.skip>
+        <!--
+            PUBLISHING GUARD. The Central publisher lives in pom-release.xml, not here: its <extensions> is
+            read only from a top-level <build>, and keeping it out of pom.xml means a normal build never loads
+            it. maven.deploy.skip=true is the second half of the guard: maven-deploy-plugin is bound to the
+            deploy phase, so without it `mvn deploy` would upload to the distributionManagement URL in this
+            POM. It stays true in pom-release.xml too, because that skips maven-deploy-plugin, not the Central
+            publisher (a separate goal at the same phase): a release therefore cannot fall back to a direct
+            deploy if the publisher extension ever fails to load. See pom-release.xml.
+        -->
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
+    <dependencies>
+        <!-- Test-only: the library itself resolves nothing beyond the JDK. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>3.2.1</version>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar-no-fork</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.plugin.version}</version>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.3.1</version>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.plugin.version}</version>
+                <configuration>
+                    <!--
+                        The zero-allocation `String` path reads `String.value`/`coder` through a
+                        `privateLookupIn` VarHandle, which needs `java.lang` opened to the unnamed module. Without
+                        this the implementation falls back to `toCharArray()` — correct, but allocating — and
+                        WyhashZeroAllocTest would be asserting a path it never reached.
+                    -->
+                    <argLine>--add-opens java.base/java.lang=ALL-UNNAMED</argLine>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>3.0.1</version>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                        <configuration>
-                            <gpgArguments>
-                                <arg>--pinentry-mode</arg>
-                                <arg>loopback</arg>
-                            </gpgArguments>
-                        </configuration>
-                    </execution>
-                </executions>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${maven.jar.plugin.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>${maven.install.plugin.version}</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.1.0</version>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
+                <version>${maven.deploy.plugin.version}</version>
             </plugin>
-            <plugin>
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.4.0</version>
-                <extensions>true</extensions>
-                <executions>
-                    <execution>
-                        <id>central-publish</id>
-                        <phase>deploy</phase>
-                        <goals>
-                            <goal>publish</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <publishingServerId>central</publishingServerId>
-                    <tokenAuth>true</tokenAuth>
-                </configuration>
-            </plugin>
+            <!--
+                The Central publisher is deliberately NOT here. It lives in pom-release.xml, in that POM's
+                top-level <build>, because Maven reads <extensions> only from the build and never from a
+                profile: declared in the publish profile it was silently never loaded, and `deploy` staged a
+                bundle without uploading it or saying "central". It must also not be in pom.xml's <build>,
+                because then every build would load it and a bare `mvn deploy` would publish by default.
+                maven.deploy.skip=true above makes a bare `mvn deploy` a no-op instead; pom-release.xml keeps
+                that skip and adds the publisher.
+            -->
         </plugins>
     </build>
-    
-    <description>
-        Standalone implementation of Wyhash, compatible with the Zig standard library variant.
-        Intended for file change tracking and general-purpose non-cryptographic hashing.
-    </description>
+    <profiles>
+        <profile>
+            <id>publish</id>
+            <build>
+                <plugins>
+                    <!-- Central requires a sources jar and a javadoc jar next to the binary. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>${maven.source.plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>${maven.javadoc.plugin.version}</version>
+                        <configuration>
+                            <doclint>none</doclint>
+                            <additionalOptions>
+                                <additionalOption>--no-fonts</additionalOption>
+                            </additionalOptions>
+                            <source>${maven.compiler.release}</source>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Signing: skipped unless -Dgpg.skip=false. The passphrase comes from MAVEN_GPG_PASSPHRASE,
+                         so a headless build never waits on a prompt. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${maven.gpg.plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${gpg.skip}</skip>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
+    <distributionManagement>
+        <snapshotRepository>
+            <id>central</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+        </snapshotRepository>
+        <repository>
+            <id>central</id>
+            <url>https://central.sonatype.com/repository/maven-releases/</url>
+        </repository>
+    </distributionManagement>
 </project>

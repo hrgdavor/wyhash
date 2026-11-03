@@ -1,9 +1,8 @@
-// SPDX-License-Identifier: MIT
-// Copyright (c) 2026 Davor Hrg
 package hr.hrg.wyhash;
 
-import org.junit.Test;
-import static org.junit.Assert.assertEquals;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class WyhashTestVectors {
 
